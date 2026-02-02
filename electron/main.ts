@@ -5,7 +5,6 @@ let tray: Tray | null = null;
 let window: BrowserWindow | null = null;
 
 function createTray() {
-
     const iconPath = app.isPackaged
         ? path.join(process.resourcesPath, "icon.png")
         : path.join(process.cwd(), "public", "icon.png");
@@ -14,18 +13,25 @@ function createTray() {
     icon.setTemplateImage(true);
 
     tray = new Tray(icon);
-    tray.setToolTip("심플 타이머");
+    tray.setToolTip("simple timer");
 
     tray.on("click", () => {
         if (!window) return;
-        window.isVisible() ? window.hide() : window.show();
+
+        if (window.isVisible()) {
+            window.hide();
+        } else {
+            setWindowPosition();
+            window.show();
+            window.focus();
+        }
     });
 }
 
 function createWindow() {
     window = new BrowserWindow({
-        width: 400,
-        height: 400,
+        width: 300,
+        height: 300,
         show: false,
         frame: false,
         resizable: false,
@@ -35,11 +41,26 @@ function createWindow() {
         },
     });
 
-    window.loadFile("index.html");
-
     window.on("blur", () => {
-        if (window) window.hide();
+        window?.hide();
     });
+}
+
+function setWindowPosition() {
+    if (!tray || !window ) return;
+
+    const trayBounds = tray.getBounds();
+    const windowBounds = window.getBounds();
+
+    const x = Math.round(
+        trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2
+    );
+
+    const y = Math.round(
+        trayBounds.y + trayBounds.height + 4
+    );
+
+    window.setPosition(x, y, false);
 }
 
 app.whenReady().then(() => {
