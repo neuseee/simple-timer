@@ -15,16 +15,21 @@ function createTray() {
     tray = new Tray(icon);
     tray.setToolTip("simple timer");
 
-    tray.on("click", () => {
-        if (!window) return;
+    tray.on("click", (_, bounds) => {
+        if (!window || !bounds) return;
 
-        if (window.isVisible()) {
-            window.hide();
-        } else {
-            setWindowPosition();
-            window.show();
-            window.focus();
-        }
+        const { x, y, width, height } = bounds;
+        const { width: w } = window.getBounds();
+
+        window.setPosition(
+            Math.round(x + width / 2 - w / 2),
+            Math.round(y + height + 5),
+            false,
+        );
+
+        window.isVisible()
+            ? window.hide()
+            : (window.show(), window.focus());
     });
 }
 
@@ -32,35 +37,21 @@ function createWindow() {
     window = new BrowserWindow({
         width: 300,
         height: 300,
-        show: false,
         frame: false,
+        show: false,
         resizable: false,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
         },
+        title: "simple timer",
     });
 
-    window.on("blur", () => {
-        window?.hide();
-    });
-}
+    app.isPackaged
+        ? window.loadFile(path.join(process.resourcesPath, "renderer", "index.html"))
+        : window.loadURL("http://localhost:5173");
 
-function setWindowPosition() {
-    if (!tray || !window ) return;
-
-    const trayBounds = tray.getBounds();
-    const windowBounds = window.getBounds();
-
-    const x = Math.round(
-        trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2
-    );
-
-    const y = Math.round(
-        trayBounds.y + trayBounds.height + 4
-    );
-
-    window.setPosition(x, y, false);
+    window.on("blur", () => window?.hide());
 }
 
 app.whenReady().then(() => {
