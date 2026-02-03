@@ -1,62 +1,84 @@
-import { app, Tray, BrowserWindow, nativeImage, screen } from "electron";
-import path from "path";
+import { app, BrowserWindow, nativeImage, Tray } from "electron";
 import isDev from "electron-is-dev";
+import path from "path";
 
 let tray: Tray | null = null;
 let window: BrowserWindow | null = null;
 
-function createTray() {
+const getWindowPosition = () => {
+    if (!window || !tray) return { x: 0, y: 0 };
+
+    const windowBounds = window.getBounds();
+    const trayBounds = tray.getBounds();
+
+    const x = Math.round(
+        trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2
+    );
+
+    const y = Math.round(
+        trayBounds.y + trayBounds.height + 4
+    );
+
+    return { x, y };
+}
+
+const toggleWindow = () => {
+    if (!window) return;
+
+    const { x, y } = getWindowPosition();
+
+    window.setBounds({
+        x,
+        y,
+        width: window.getBounds().width,
+        height: window.getBounds().height
+    });
+
+    window.isVisible()
+        ? window.hide()
+        : (window.show(), window.focus());
+}
+
+const createTray = () => {
     const iconPath = isDev
         ? path.join(process.cwd(), "public", "tray.png")
-        : path.join(process.resourcesPath, "tray.png");
+        : path.join(process.resourcesPath, "assets", "tray.png");
 
     const icon = nativeImage.createFromPath(iconPath);
     icon.setTemplateImage(true);
 
     tray = new Tray(icon);
-    tray.setToolTip("simple timer");
+    tray.setToolTip("Simple Timer");
 
-    tray.on("click", (_, bounds) => {
-        if (!window || !bounds) return;
-
-        const { x, y } = bounds;
-
-        window.setPosition(
-            Math.round(x), 
-            Math.round(y),
-            false,
-        );
-
-        window.isVisible()
-            ? window.hide()
-            : (window.show(), window.focus());
-    });
+    tray.on("click", () => toggleWindow());
 }
 
-function createWindow() {
+const createWindow = () => {
     window = new BrowserWindow({
         width: 300,
-        height: 300,
-        frame: false,
+        height: 450,
         show: false,
+        frame: false,
         resizable: false,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-        },
-        title: "simple timer",
+
+        }
     });
 
     window.loadURL(
         isDev
             ? "http://localhost:5173"
-            : `file://${ path.join(process.resourcesPath, "renderer", "index.html") }`,
+            : `file://${path.join(__dirname, "../build/index.html")}`
     );
 
     window.on("blur", () => window?.hide());
 }
 
-app.whenReady().then(() => {
+app.on("ready", () => {
+    if (process.platform === "darwin") {
+        app.dock?.hide();
+    }
+
     createTray();
     createWindow();
 });
